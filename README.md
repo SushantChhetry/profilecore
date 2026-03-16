@@ -1,3 +1,4 @@
+
 # ProfileCore
 
 Turn professional profile documents into **structured, AI-queryable profiles**.
@@ -16,7 +17,7 @@ Instead of reading static documents, applications can interact with **AI-native 
 
 ---
 
-## Why ProfileCore Exists
+## ✨ Why ProfileCore Exists
 
 Professional identity information is usually trapped inside documents that are:
 
@@ -29,7 +30,7 @@ ProfileCore solves this by converting documents into **structured, machine-reada
 
 ---
 
-## How It Works
+## ⚙️ How It Works
 
 ```
 Upload Profile Document
@@ -77,7 +78,7 @@ This structured profile becomes the foundation for:
 
 ---
 
-## Features
+## 🚀 Features
 
 * Parse professional profile documents into structured JSON
 * Standardized profile schema
@@ -88,7 +89,7 @@ This structured profile becomes the foundation for:
 
 ---
 
-## Repository Layout
+## 🗂 Repository Layout
 
 ```
 profilecore
@@ -107,7 +108,7 @@ profilecore
 
 ---
 
-## Current Status
+## 🧪 Current Status
 
 ProfileCore is under **active development**.
 
@@ -126,7 +127,7 @@ docs/product-vision.mdx
 
 ---
 
-## Quick Start
+## ⚡ Quick Start
 
 ### Prerequisites
 
@@ -138,16 +139,16 @@ docs/product-vision.mdx
 
 ---
 
-### Install dependencies
+### 📦 Install dependencies
 
-```
+```bash
 pnpm install
 uv sync --project apps/parser --extra dev
 ```
 
 ---
 
-### Configure environment variables
+### 🔐 Configure environment variables
 
 Copy:
 
@@ -175,7 +176,7 @@ This enables deterministic local development.
 
 ---
 
-### Apply database migration
+### 🗄 Apply database migration
 
 Apply:
 
@@ -187,25 +188,25 @@ to your Supabase project.
 
 ---
 
-### Run the app
+### ▶️ Run the app
 
 Start the web app:
 
-```
+```bash
 pnpm --filter @profilecore/web dev
 ```
 
 Start the parser service:
 
-```
+```bash
 uv run --project apps/parser uvicorn profilecore_parser.main:app --reload
 ```
 
 ---
 
-## Useful Commands
+## 🛠 Useful Commands
 
-```
+```bash
 pnpm build
 pnpm typecheck
 pnpm lint
@@ -214,7 +215,7 @@ pnpm test
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 See the `docs` directory for deeper documentation.
 
@@ -226,7 +227,7 @@ See the `docs` directory for deeper documentation.
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome.
 
@@ -252,7 +253,7 @@ CODE_OF_CONDUCT.md
 
 ---
 
-## License
+## 📜 License
 
 ProfileCore is released under the **MIT License**.
 
@@ -264,28 +265,10 @@ LICENSE
 
 ---
 
-## Star the Project
+## ⭐ Star the Project
 
-If you find ProfileCore useful, please consider ⭐ starring the repository.
+If you find ProfileCore useful, please consider **starring the repository**.
 
-It helps the project reach more developers.
+It helps the project reach more developers and contributors.
 
 ---
-
-# What makes this README stronger
-
-This version:
-
-* has a **clear hook**
-* shows **how the system works**
-* includes a **visual pipeline**
-* shows **example output**
-* explains **why the project exists**
-* looks like **serious infrastructure**
-
-This style is used by successful repos like:
-
-* Supabase
-* LangChain
-* Payload
-* Vercel OSS
