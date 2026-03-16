@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    command: pnpm --filter @profilecore/web dev --hostname 0.0.0.0 --port 3000
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+
+  parser:
+    build:
+      context: .
+      dockerfile: apps/parser/Dockerfile
+    command: uv run --project apps/parser uvicorn profilecore_parser.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+

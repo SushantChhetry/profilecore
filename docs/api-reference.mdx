@@ -1,0 +1,85 @@
+# API Reference
+
+## Document upload
+
+### `POST /api/v1/documents/init-upload`
+
+Request body:
+
+```json
+{
+  "filename": "jane-doe-linkedin.pdf",
+  "mimeType": "application/pdf",
+  "byteSize": 182334
+}
+```
+
+Response:
+
+```json
+{
+  "documentId": "uuid",
+  "storagePath": "documents/uuid/jane-doe-linkedin.pdf",
+  "upload": {
+    "mode": "server_proxy",
+    "url": "/api/v1/documents/uuid/upload"
+  }
+}
+```
+
+### `PUT /api/v1/documents/{documentId}/upload`
+
+Upload the raw PDF bytes to the server proxy route returned by `init-upload`.
+
+### `POST /api/v1/documents/{documentId}/start-extraction`
+
+Creates or reuses an active extraction run.
+
+## Extraction status
+
+### `GET /api/v1/extraction-runs/{runId}`
+
+Response:
+
+```json
+{
+  "run": {
+    "id": "uuid",
+    "status": "processing"
+  },
+  "profileId": null
+}
+```
+
+## Profiles
+
+### `GET /api/v1/profiles/{profileId}`
+
+Returns the normalized profile summary, section payloads, and canonical JSON.
+
+### `GET /api/v1/profiles/{profileId}/export`
+
+Downloads the canonical profile JSON.
+
+## Chat
+
+### `POST /api/v1/profiles/{profileId}/chat/threads`
+
+Creates a chat thread. Supply `starterPrompt` if you want the thread to begin with an assistant response.
+
+### `GET /api/v1/chat-threads/{threadId}/messages`
+
+Lists saved messages for a thread.
+
+### `POST /api/v1/chat-threads/{threadId}/messages`
+
+Request body:
+
+```json
+{
+  "content": "Generate a warm intro for this person."
+}
+```
+
+The assistant response is grounded strictly in the stored structured profile.
+

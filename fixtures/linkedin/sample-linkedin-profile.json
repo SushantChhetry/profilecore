@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0.0",
+  "documentType": "linkedin_pdf",
+  "person": {
+    "fullName": "Jane Doe",
+    "headline": "Product Manager at Stripe",
+    "location": "New York, NY",
+    "summary": "Product leader focused on developer tools, payments, and platform quality.",
+    "currentCompany": "Stripe"
+  },
+  "experience": [
+    {
+      "company": "Stripe",
+      "role": "Product Manager",
+      "startDate": "2022",
+      "endDate": "Present",
+      "description": "Led platform launches across API and developer experience teams."
+    },
+    {
+      "company": "Square",
+      "role": "Senior Product Analyst",
+      "startDate": "2019",
+      "endDate": "2022",
+      "description": "Worked on seller onboarding and growth analytics."
+    }
+  ],
+  "education": [
+    {
+      "school": "MIT",
+      "degree": "B.S. Computer Science",
+      "startDate": "2015",
+      "endDate": "2019"
+    }
+  ],
+  "skills": [
+    { "name": "Product Strategy" },
+    { "name": "Roadmapping" },
+    { "name": "Payments" },
+    { "name": "Developer Experience" },
+    { "name": "Leadership" }
+  ],
+  "links": {},
+  "metadata": {
+    "sourceFilename": "sample-linkedin-profile.pdf",
+    "sourceTextExcerpt": "LinkedIn Profile Jane Doe Product Manager at Stripe",
+    "extractedAt": "2026-03-16T00:00:00Z",
+    "extractionWarnings": []
+  }
+}

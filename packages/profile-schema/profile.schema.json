@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://profilecore.dev/schema/profile.schema.json",
+  "title": "ParsedProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "documentType",
+    "person",
+    "experience",
+    "education",
+    "skills",
+    "links",
+    "metadata"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "documentType": {
+      "type": "string",
+      "const": "linkedin_pdf"
+    },
+    "person": {
+      "$ref": "#/$defs/person"
+    },
+    "experience": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/experience"
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/education"
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skill"
+      }
+    },
+    "links": {
+      "$ref": "#/$defs/links"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    }
+  },
+  "$defs": {
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fullName"],
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "headline": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "currentCompany": {
+          "type": "string"
+        }
+      }
+    },
+    "experience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company", "role"],
+      "properties": {
+        "company": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "endDate": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "education": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["school"],
+      "properties": {
+        "school": {
+          "type": "string",
+          "minLength": 1
+        },
+        "degree": {
+          "type": "string"
+        },
+        "fieldOfStudy": {
+          "type": "string"
+        },
+        "startDate": {
+          "type": "string"
+        },
+        "endDate": {
+          "type": "string"
+        }
+      }
+    },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endorsementCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "linkedin": {
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        },
+        "other": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extractedAt", "extractionWarnings"],
+      "properties": {
+        "sourceFilename": {
+          "type": "string"
+        },
+        "sourceTextExcerpt": {
+          "type": "string"
+        },
+        "extractedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "extractionWarnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+

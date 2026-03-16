@@ -1,0 +1,57 @@
+# Setup
+
+## Prerequisites
+
+- `Node.js` 23+
+- `pnpm` 10+
+- `Python` 3.12+
+- `uv`
+- A hosted `Supabase` project
+
+## Environment
+
+Copy [`.env.example`](/Users/sushantchhetry/Documents/GitHub/profilecore/.env.example) to `.env` and fill in:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENAI_API_KEY` for real model calls
+- `PROFILECORE_MOCK_OPENAI=true` if you want deterministic local replies
+
+## Database and storage
+
+Apply the migration in [supabase/migrations/20260316110000_init_profilecore.sql](/Users/sushantchhetry/Documents/GitHub/profilecore/supabase/migrations/20260316110000_init_profilecore.sql). It creates:
+
+- the document, extraction, profile, section, thread, and message tables
+- the private `profilecore-documents` storage bucket
+- the `claim_extraction_run` RPC used by the parser worker
+
+## Local development
+
+Install dependencies:
+
+```bash
+pnpm install
+uv sync --project apps/parser --extra dev
+```
+
+Run the web app:
+
+```bash
+pnpm --filter @profilecore/web dev
+```
+
+Run the parser worker:
+
+```bash
+uv run --project apps/parser uvicorn profilecore_parser.main:app --reload
+```
+
+## Docker Compose
+
+If you prefer containers, the root [docker-compose.yml](/Users/sushantchhetry/Documents/GitHub/profilecore/docker-compose.yml) starts:
+
+- `web` on port `3000`
+- `parser` on port `8000`
+
+Both services expect the same `.env` file at the repo root.
+

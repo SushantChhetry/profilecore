@@ -1,0 +1,27 @@
+LinkedIn Profile
+Jane Doe
+Product Manager at Stripe
+New York, NY
+
+About
+Product leader focused on developer tools, payments, and platform quality.
+
+Experience
+Product Manager
+Stripe
+2022 - Present
+Led platform launches across API and developer experience teams.
+
+Senior Product Analyst
+Square
+2019 - 2022
+Worked on seller onboarding and growth analytics.
+
+Education
+MIT
+B.S. Computer Science
+2015 - 2019
+
+Skills
+Product Strategy, Roadmapping, Payments, Developer Experience, Leadership
+

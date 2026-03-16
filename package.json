@@ -1,0 +1,14 @@
+{
+  "name": "profilecore",
+  "private": true,
+  "packageManager": "pnpm@10.10.0",
+  "scripts": {
+    "build": "pnpm --filter @profilecore/profile-schema build && pnpm --filter @profilecore/web build",
+    "dev": "pnpm --filter @profilecore/web dev",
+    "dev:parser": "uv run --project apps/parser uvicorn profilecore_parser.main:app --reload",
+    "test": "pnpm --filter @profilecore/web test && uv run --project apps/parser pytest",
+    "typecheck": "pnpm --filter @profilecore/profile-schema build && pnpm --filter @profilecore/web typecheck",
+    "lint": "pnpm --filter @profilecore/web lint && uv run --project apps/parser ruff check apps/parser/src apps/parser/tests"
+  }
+}
+
