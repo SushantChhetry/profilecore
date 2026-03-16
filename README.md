@@ -192,6 +192,119 @@ AI Chat Interface
 
 Early versions do not require vector databases or complex RAG pipelines.
 
+## Recommended V1 Stack
+
+For a fast, credible first version, use a stack that keeps the product surface simple while leaving room for the document pipeline to get more sophisticated over time.
+
+### Frontend And App Shell
+
+Use `Next.js` with `TypeScript` and the App Router so the UI and lightweight API endpoints can live in one codebase.
+
+### LLM Layer
+
+Use the `OpenAI Responses API` with Structured Outputs for profile extraction so the system returns schema-conformant JSON instead of free-form text.
+
+### Database
+
+Use `Postgres` via `Supabase` for users, uploaded documents, parsed profiles, chat history, and extraction runs.
+
+### Storage
+
+Use `Supabase Storage` or `S3` for uploaded PDFs. Supabase is the simpler default if you want storage, database, and auth in one place.
+
+### PDF Extraction
+
+Use a separate Python service, ideally `FastAPI` with `PyMuPDF`, for document parsing and cleanup. Keep it isolated from the Next.js app so the frontend stays focused on product experience.
+
+### Auth
+
+Use `Supabase Auth` or `Clerk` if you need saved profiles, shared workspaces, or user accounts from day one. If this launches first as an open-source developer tool, auth can wait.
+
+### Rate Limiting
+
+Use `Upstash Redis` for request throttling and abuse protection.
+
+### Deployment
+
+Deploy the frontend on `Vercel` and the Python parser on `Railway` or `Render`.
+
+## Recommended Architecture
+
+The practical v1 setup is:
+
+- Next.js plus TypeScript for upload flows, profile UI, and chat
+- Supabase for Postgres, storage, and optional auth
+- Python FastAPI for PDF parsing and cleanup
+- OpenAI Responses API plus Structured Outputs for profile extraction
+- Upstash Redis for rate limiting
+
+This keeps the product aligned with its two real jobs:
+
+1. document ingestion and parsing
+2. structured profile interaction
+
+Next.js is a good fit for the product surface. Python is a better fit for the document pipeline. Postgres should be the primary store because the core object is a structured profile, not a collection of unstructured chunks.
+
+## Best V1 Flow
+
+```text
+User uploads PDF
+      |
+      v
+Python service extracts and cleans text
+      |
+      v
+OpenAI returns structured profile JSON
+      |
+      v
+Save profile JSON in Postgres
+      |
+      v
+Render profile in UI
+      |
+      v
+Use saved profile JSON as chat context
+```
+
+That is enough for a strong first open-source release.
+
+## Core Data Model
+
+Start with a relational model centered on structured profiles:
+
+- `user`
+- `uploaded_document`
+- `parsed_profile`
+- `profile_section`
+- `chat_thread`
+- `message`
+- `extraction_run`
+
+If you later need semantic search across long bios or many source documents, add embeddings and `pgvector` on top of Postgres instead of making vector search the foundation.
+
+## What To Avoid Early
+
+Do not start v1 with:
+
+- LangChain
+- a vector database as the primary store
+- multi-agent orchestration
+- Kafka or queues unless traffic forces it
+- microservices everywhere
+
+That is unnecessary complexity for a product whose first milestone is reliable structured extraction plus useful profile interactions.
+
+## Fastest MVP Alternative
+
+If speed matters more than extraction quality for the first demo, a simpler version is still viable:
+
+- Next.js
+- Supabase
+- OpenAI
+- server-side PDF parsing in Node
+
+That is faster to ship, but a Python parser is the better long-term default if document quality is central to the product.
+
 ## Target Users
 
 ### Developers
