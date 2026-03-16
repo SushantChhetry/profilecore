@@ -82,6 +82,43 @@ export type ProfileRecord = ParsedProfileRow & {
   sections: ProfileSectionRow[];
 };
 
+export type ProfileLibraryItem = {
+  profileId: string;
+  fullName: string;
+  headline: string | null;
+  location: string | null;
+  currentCompany: string | null;
+  filename: string;
+  parsedAt: string;
+  lastActivityAt: string;
+  lastChattedAt: string | null;
+  threadId: string | null;
+};
+
+export type DeleteProfileResult = {
+  profileId: string;
+  documentId: string;
+  storageCleanupError: string | null;
+};
+
+function assertDocumentAccess(document: UploadedDocumentRow, ownerKey?: string): void {
+  if (!ownerKey || document.owner_key === ownerKey) {
+    return;
+  }
+
+  throw new AppError(404, "document_not_found", "Document not found.");
+}
+
+function getCurrentCompany(profile: ParsedProfile): string | null {
+  const explicit = profile.person.currentCompany?.trim();
+  if (explicit) {
+    return explicit;
+  }
+
+  const fallback = profile.experience.find((item) => item.company?.trim())?.company?.trim();
+  return fallback || null;
+}
+
 export async function createUploadedDocument(params: {
   documentId: string;
   ownerKey: string;
@@ -111,7 +148,7 @@ export async function createUploadedDocument(params: {
   return data as UploadedDocumentRow;
 }
 
-export async function getUploadedDocument(documentId: string) {
+export async function getUploadedDocument(documentId: string, ownerKey?: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("uploaded_document")
@@ -123,12 +160,15 @@ export async function getUploadedDocument(documentId: string) {
     throw new AppError(404, "document_not_found", "Document not found.");
   }
 
-  return data as UploadedDocumentRow;
+  const document = data as UploadedDocumentRow;
+  assertDocumentAccess(document, ownerKey);
+
+  return document;
 }
 
-export async function uploadDocumentBytes(documentId: string, bytes: Uint8Array, mimeType: string) {
+export async function uploadDocumentBytes(documentId: string, bytes: Uint8Array, mimeType: string, ownerKey?: string) {
   const supabase = getSupabaseAdmin();
-  const document = await getUploadedDocument(documentId);
+  const document = await getUploadedDocument(documentId, ownerKey);
 
   const { error: uploadError } = await supabase.storage.from(env.storageBucket).upload(document.storage_path, bytes, {
     contentType: mimeType,
@@ -161,13 +201,12 @@ export async function uploadDocumentBytes(documentId: string, bytes: Uint8Array,
   if (updateError) {
     throw new AppError(500, "upload_state_failed", updateError.message);
   }
-
-  return getUploadedDocument(documentId);
+  return getUploadedDocument(documentId, ownerKey);
 }
 
-export async function createOrReuseExtractionRun(documentId: string) {
+export async function createOrReuseExtractionRun(documentId: string, ownerKey?: string) {
   const supabase = getSupabaseAdmin();
-  const document = await getUploadedDocument(documentId);
+  const document = await getUploadedDocument(documentId, ownerKey);
 
   if (document.upload_state !== "uploaded") {
     throw new AppError(409, "upload_incomplete", "Upload has not completed.");
@@ -206,7 +245,7 @@ export async function createOrReuseExtractionRun(documentId: string) {
   return data as ExtractionRunRow;
 }
 
-export async function getExtractionRunStatus(runId: string) {
+export async function getExtractionRunStatus(runId: string, ownerKey?: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("extraction_run")
@@ -217,6 +256,8 @@ export async function getExtractionRunStatus(runId: string) {
   if (error || !data) {
     throw new AppError(404, "run_not_found", "Extraction run not found.");
   }
+
+  await getUploadedDocument((data as ExtractionRunRow).document_id, ownerKey);
 
   const response: {
     run: ExtractionRunRow;
@@ -239,7 +280,7 @@ export async function getExtractionRunStatus(runId: string) {
   return response;
 }
 
-export async function getProfileById(profileId: string) {
+export async function getProfileById(profileId: string, ownerKey?: string) {
   const supabase = getSupabaseAdmin();
   const { data: profileRow, error: profileError } = await supabase
     .from("parsed_profile")
@@ -251,6 +292,9 @@ export async function getProfileById(profileId: string) {
     throw new AppError(404, "profile_not_found", "Profile not found.");
   }
 
+  const typedProfile = profileRow as ParsedProfileRow;
+  await getUploadedDocument(typedProfile.document_id, ownerKey);
+
   const { data: sections, error: sectionError } = await supabase
     .from("profile_section")
     .select("*")
@@ -261,8 +305,6 @@ export async function getProfileById(profileId: string) {
     throw new AppError(500, "profile_section_failed", sectionError.message);
   }
 
-  const typedProfile = profileRow as ParsedProfileRow;
-
   return {
     ...typedProfile,
     canonical_json: assertParsedProfile(typedProfile.canonical_json),
@@ -270,8 +312,137 @@ export async function getProfileById(profileId: string) {
   } satisfies ProfileRecord;
 }
 
-export async function createChatThread(profileId: string, ownerKey: string, title?: string) {
-  const profile = await getProfileById(profileId);
+export async function deleteProfileById(profileId: string, ownerKey: string): Promise<DeleteProfileResult> {
+  const supabase = getSupabaseAdmin();
+  const profile = await getProfileById(profileId, ownerKey);
+  const document = await getUploadedDocument(profile.document_id, ownerKey);
+
+  const { error: deleteError } = await supabase
+    .from("uploaded_document")
+    .delete()
+    .eq("id", document.id)
+    .eq("owner_key", ownerKey);
+
+  if (deleteError) {
+    throw new AppError(500, "profile_delete_failed", deleteError.message);
+  }
+
+  const { error: storageCleanupError } = await supabase.storage.from(env.storageBucket).remove([document.storage_path]);
+
+  return {
+    profileId: profile.id,
+    documentId: document.id,
+    storageCleanupError: storageCleanupError?.message ?? null,
+  };
+}
+
+export async function listProfileLibraryItems(ownerKey: string): Promise<ProfileLibraryItem[]> {
+  const supabase = getSupabaseAdmin();
+  const { data: documents, error: documentError } = await supabase
+    .from("uploaded_document")
+    .select("id, owner_key, filename, mime_type, byte_size, storage_path, upload_state, uploaded_at, created_at, updated_at")
+    .eq("owner_key", ownerKey)
+    .order("updated_at", { ascending: false });
+
+  if (documentError) {
+    throw new AppError(500, "document_list_failed", documentError.message);
+  }
+
+  const typedDocuments = (documents ?? []) as UploadedDocumentRow[];
+  if (typedDocuments.length === 0) {
+    return [];
+  }
+
+  const documentById = new Map(typedDocuments.map((document) => [document.id, document]));
+  const documentIds = typedDocuments.map((document) => document.id);
+
+  const { data: profiles, error: profileError } = await supabase
+    .from("parsed_profile")
+    .select("id, document_id, extraction_run_id, schema_version, full_name, headline, location, canonical_json, created_at, updated_at")
+    .in("document_id", documentIds)
+    .order("updated_at", { ascending: false });
+
+  if (profileError) {
+    throw new AppError(500, "profile_list_failed", profileError.message);
+  }
+
+  const typedProfiles = (profiles ?? []) as ParsedProfileRow[];
+  if (typedProfiles.length === 0) {
+    return [];
+  }
+
+  const profileIds = typedProfiles.map((profile) => profile.id);
+  const { data: threads, error: threadError } = await supabase
+    .from("chat_thread")
+    .select("*")
+    .eq("owner_key", ownerKey)
+    .in("profile_id", profileIds)
+    .order("updated_at", { ascending: false });
+
+  if (threadError) {
+    throw new AppError(500, "thread_list_failed", threadError.message);
+  }
+
+  const latestThreadByProfile = new Map<string, ChatThreadRow>();
+  for (const thread of (threads ?? []) as ChatThreadRow[]) {
+    if (!latestThreadByProfile.has(thread.profile_id)) {
+      latestThreadByProfile.set(thread.profile_id, thread);
+    }
+  }
+
+  return typedProfiles
+    .map((profile) => {
+      const document = documentById.get(profile.document_id);
+      if (!document) {
+        return null;
+      }
+
+      const thread = latestThreadByProfile.get(profile.id) ?? null;
+      const lastActivityAt = thread?.updated_at ?? profile.updated_at;
+
+      return {
+        profileId: profile.id,
+        fullName: profile.full_name,
+        headline: profile.headline,
+        location: profile.location,
+        currentCompany: getCurrentCompany(profile.canonical_json),
+        filename: document.filename,
+        parsedAt: profile.created_at,
+        lastActivityAt,
+        lastChattedAt: thread?.updated_at ?? null,
+        threadId: thread?.id ?? null,
+      } satisfies ProfileLibraryItem;
+    })
+    .filter((item): item is ProfileLibraryItem => item !== null)
+    .sort((left, right) => Date.parse(right.lastActivityAt) - Date.parse(left.lastActivityAt));
+}
+
+export async function getLatestChatThreadForProfile(profileId: string, ownerKey: string) {
+  await getProfileById(profileId, ownerKey);
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("chat_thread")
+    .select("*")
+    .eq("profile_id", profileId)
+    .eq("owner_key", ownerKey)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(500, "thread_lookup_failed", error.message);
+  }
+
+  return (data as ChatThreadRow | null) ?? null;
+}
+
+export async function getOrCreateChatThread(profileId: string, ownerKey: string, title?: string) {
+  const existingThread = await getLatestChatThreadForProfile(profileId, ownerKey);
+  if (existingThread) {
+    return existingThread;
+  }
+
+  const profile = await getProfileById(profileId, ownerKey);
   const supabase = getSupabaseAdmin();
 
   const { data, error } = await supabase
@@ -291,7 +462,7 @@ export async function createChatThread(profileId: string, ownerKey: string, titl
   return data as ChatThreadRow;
 }
 
-export async function getChatThread(threadId: string) {
+export async function getChatThread(threadId: string, ownerKey?: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("chat_thread")
@@ -303,11 +474,22 @@ export async function getChatThread(threadId: string) {
     throw new AppError(404, "thread_not_found", "Chat thread not found.");
   }
 
-  return data as ChatThreadRow;
+  const thread = data as ChatThreadRow;
+
+  if (ownerKey && thread.owner_key !== ownerKey) {
+    throw new AppError(404, "thread_not_found", "Chat thread not found.");
+  }
+
+  if (ownerKey) {
+    await getProfileById(thread.profile_id, ownerKey);
+  }
+
+  return thread;
 }
 
-export async function listMessages(threadId: string) {
+export async function listMessages(threadId: string, ownerKey?: string) {
   const supabase = getSupabaseAdmin();
+  await getChatThread(threadId, ownerKey);
   const { data, error } = await supabase
     .from("message")
     .select("*")
@@ -321,11 +503,11 @@ export async function listMessages(threadId: string) {
   return (data ?? []) as MessageRow[];
 }
 
-export async function sendMessageToThread(threadId: string, content: string) {
+export async function sendMessageToThread(threadId: string, content: string, ownerKey: string) {
   const supabase = getSupabaseAdmin();
-  const thread = await getChatThread(threadId);
-  const profile = await getProfileById(thread.profile_id);
-  const existingMessages = await listMessages(threadId);
+  const thread = await getChatThread(threadId, ownerKey);
+  const profile = await getProfileById(thread.profile_id, ownerKey);
+  const existingMessages = await listMessages(threadId, ownerKey);
 
   const { data: userMessage, error: userError } = await supabase
     .from("message")
@@ -371,8 +553,23 @@ export async function sendMessageToThread(threadId: string, content: string) {
     throw new AppError(500, "assistant_message_failed", assistantError?.message ?? "Unable to save assistant message.");
   }
 
+  const touchedAt = new Date().toISOString();
+  const { error: threadTouchError } = await supabase
+    .from("chat_thread")
+    .update({
+      updated_at: touchedAt,
+    })
+    .eq("id", threadId);
+
+  if (threadTouchError) {
+    throw new AppError(500, "thread_touch_failed", threadTouchError.message);
+  }
+
   return {
-    thread,
+    thread: {
+      ...thread,
+      updated_at: touchedAt,
+    },
     userMessage,
     assistantMessage,
   };

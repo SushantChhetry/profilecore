@@ -1,0 +1,81 @@
+# Troubleshooting
+
+This page covers the most likely local setup and contribution issues.
+
+## I want the easiest local setup
+
+Set:
+
+```bash
+PROFILECORE_MOCK_LLM=true
+```
+
+That avoids real model calls while keeping the app behavior deterministic enough for most local development work.
+
+## The app starts, but upload or parsing fails
+
+Check these first:
+
+- `.env` exists at the repo root
+- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set
+- the migration in `supabase/migrations/20260316110000_init_profilecore.sql` has been applied
+- the parser service is running
+- `PROFILECORE_PARSER_URL` points to the parser service
+
+## The parser tests fail immediately
+
+Make sure the parser dependencies were installed with the dev extra:
+
+```bash
+uv sync --project apps/parser --extra dev
+```
+
+Then rerun:
+
+```bash
+uv run --project apps/parser pytest
+```
+
+## Frontend tests or type checks fail
+
+Install workspace dependencies:
+
+```bash
+pnpm install
+```
+
+Then rerun:
+
+```bash
+pnpm --filter @profilecore/web typecheck
+pnpm --filter @profilecore/web test
+```
+
+## I changed one area and do not want to run everything yet
+
+Use the narrowest relevant checks first:
+
+- frontend: `pnpm --filter @profilecore/web typecheck` and `pnpm --filter @profilecore/web test`
+- parser: `uv run --project apps/parser pytest`
+- parser lint: `uv run --project apps/parser ruff check apps/parser/src apps/parser/tests`
+
+Run the full repo checks before opening the pull request if your change crosses boundaries.
+
+## I am not sure where a fix belongs
+
+Read [docs/architecture.mdx](architecture.mdx) first. It maps each part of the system to the behavior it owns.
+
+## My change touches the profile shape and now multiple things broke
+
+That usually means the change crosses a contract boundary.
+
+Check these areas together:
+
+- `packages/profile-schema`
+- `apps/parser/src/profilecore_parser`
+- `apps/web/app/api/v1`
+- `apps/web/app`
+
+## I only want to contribute docs
+
+You can contribute without running the full stack. For docs-only changes, update the relevant markdown or MDX files and mention in the pull request that runtime behavior was not affected.

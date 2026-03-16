@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import type { ParsedProfile } from "@profilecore/profile-schema";
 
 import { env } from "./env";
+import { AppError } from "./errors";
 
 export type ChatMessageInput = {
   role: "user" | "assistant";
@@ -51,15 +52,124 @@ function buildMockReply(profile: ParsedProfile, prompt: string): string {
   ].join(" ");
 }
 
+type AnthropicErrorPayload = {
+  error?: {
+    type?: string;
+    message?: string;
+  };
+  request_id?: string;
+};
+
+export async function readAnthropicErrorMessage(response: Response, model: string): Promise<string> {
+  const rawBody = (await response.text()).trim();
+  let errorType = "";
+  let errorMessage = rawBody;
+  let requestId = response.headers.get("request-id") ?? "";
+
+  if (rawBody) {
+    try {
+      const payload = JSON.parse(rawBody) as AnthropicErrorPayload;
+      errorType = payload.error?.type?.trim() ?? "";
+      errorMessage = payload.error?.message?.trim() || rawBody;
+      requestId = payload.request_id?.trim() || requestId;
+    } catch {
+      // Keep the raw body when Anthropic does not return structured JSON.
+    }
+  }
+
+  const details = [
+    `Anthropic chat request failed with status ${response.status} for model ${model}.`,
+    errorType ? `Type: ${errorType}.` : "",
+    errorMessage ? `Message: ${errorMessage}.` : "",
+    requestId ? `Request ID: ${requestId}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return details;
+}
+
+async function generateAnthropicReply(
+  profile: ParsedProfile,
+  history: ChatMessageInput[],
+  prompt: string,
+): Promise<{ content: string; model: string }> {
+  let response: Response;
+
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": env.anthropicApiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: env.anthropicChatModel,
+        max_tokens: 700,
+        system: buildSystemPrompt(profile),
+        messages: [
+          ...trimTranscript(history).map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown network error.";
+    throw new AppError(
+      502,
+      "anthropic_chat_failed",
+      `Anthropic chat request failed for model ${env.anthropicChatModel}: ${message}`,
+    );
+  }
+
+  if (!response.ok) {
+    throw new AppError(502, "anthropic_chat_failed", await readAnthropicErrorMessage(response, env.anthropicChatModel));
+  }
+
+  const payload = (await response.json()) as {
+    content?: Array<{ type?: string; text?: string }>;
+    model?: string;
+  };
+
+  const content = payload.content
+    ?.filter((block) => block.type === "text" && block.text)
+    .map((block) => block.text?.trim())
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    content: content || "No reply generated.",
+    model: payload.model || env.anthropicChatModel,
+  };
+}
+
 export async function generateChatReply(
   profile: ParsedProfile,
   history: ChatMessageInput[],
   prompt: string,
 ): Promise<{ content: string; model: string }> {
-  if (!env.openAiKey || env.mockOpenAi) {
+  if (env.mockOpenAi) {
     return {
       content: buildMockReply(profile, prompt),
-      model: "mock-openai",
+      model: "mock-llm",
+    };
+  }
+
+  if (env.anthropicApiKey) {
+    return generateAnthropicReply(profile, history, prompt);
+  }
+
+  if (!env.openAiKey) {
+    return {
+      content: buildMockReply(profile, prompt),
+      model: "mock-llm",
     };
   }
 

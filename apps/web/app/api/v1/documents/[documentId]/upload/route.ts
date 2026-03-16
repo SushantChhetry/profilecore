@@ -1,9 +1,9 @@
-import { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { uploadDocumentBytes } from "@/lib/data";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { assertApiAccess, resolveOwnerKey } from "@/lib/request-context";
+import { assertApiAccess, resolveOwnerKey, withOwnerCookie } from "@/lib/request-context";
 import { env } from "@/lib/env";
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ documentId: string }> }) {
@@ -20,13 +20,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { documentId } = await params;
-    const document = await uploadDocumentBytes(documentId, bytes, mimeType);
+    const document = await uploadDocumentBytes(documentId, bytes, mimeType, ownerKey);
 
-    return Response.json({
+    const response = NextResponse.json({
       document,
     });
+
+    return withOwnerCookie(request, response, ownerKey);
   } catch (error) {
     return toErrorResponse(error);
   }
 }
-

@@ -1,7 +1,11 @@
 "use client";
 
+import * as Label from "@radix-ui/react-label";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 type InitUploadResponse = {
   documentId: string;
@@ -83,30 +87,35 @@ export function UploadForm() {
   }
 
   return (
-    <form className="form" onSubmit={handleSubmit}>
-      <label className="stack">
-        <span className="pill">LinkedIn PDF</span>
+    <form className="grid gap-4" onSubmit={handleSubmit}>
+      <Label.Root className="grid gap-4" htmlFor="linkedin-pdf">
+        <span className="inline-flex w-fit items-center rounded-full bg-[var(--accent-soft)] px-3 py-1.5 font-mono text-[12px] uppercase tracking-[0.16em] text-[var(--accent-strong)]">
+          LinkedIn PDF
+        </span>
         <input
-          className="file-input"
+          id="linkedin-pdf"
+          className="w-full rounded-2xl border border-[color:var(--line)] bg-white/80 px-4 py-4 text-sm text-[var(--ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[color:rgba(211,93,49,0.24)]"
           type="file"
           accept="application/pdf"
           onChange={(event) => setFile(event.target.files?.[0] ?? null)}
         />
-      </label>
-      <div className="card">
-        <p className="muted">
-          Uploads go through the app server, land in a private storage bucket, and are then converted into queued
-          extraction runs for the parser worker.
-        </p>
-      </div>
-      <div className="button-row">
-        <button className="button" type="submit" disabled={isPending}>
-          {isPending ? "Uploading..." : "Parse profile"}
-        </button>
-        {file ? <span className="pill">{Math.round(file.size / 1024)} KB</span> : null}
-      </div>
-      {error ? <p style={{ color: "#b22222", margin: 0 }}>{error}</p> : null}
+      </Label.Root>
+      <p className="m-0 max-w-[58ch] text-sm leading-7 text-[var(--muted)]">
+        PDF only. When the upload finishes, the extraction run starts automatically.
+      </p>
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Uploading..." : "Parse profile"}
+          </Button>
+          {file ? (
+            <span className="inline-flex items-center rounded-full bg-[rgba(35,27,24,0.07)] px-3 py-1.5 font-mono text-[12px] text-[var(--muted)]">
+              {Math.round(file.size / 1024)} KB
+            </span>
+          ) : null}
+        </div>
+      </Card>
+      {error ? <p className="m-0 text-sm text-[#b22222]">{error}</p> : null}
     </form>
   );
 }
-

@@ -1,0 +1,117 @@
+# Architecture Overview
+
+This document explains how the main parts of ProfileCore fit together so contributors can change the correct layer with less guesswork.
+
+## System Shape
+
+ProfileCore is a small monorepo with three main responsibilities:
+
+- a web app for uploads, profile viewing, and chat
+- a parser service for PDF extraction and profile generation
+- shared schema and database storage for the structured profile model
+
+## Main Components
+
+### `apps/web`
+
+The Next.js app owns:
+
+- the user-facing pages
+- upload and parsing flows
+- profile rendering
+- chat endpoints
+- server-side integration with Supabase and the model provider
+
+### `apps/parser`
+
+The FastAPI service owns:
+
+- PDF text extraction
+- LinkedIn-specific parsing heuristics
+- extraction worker polling and retries
+- transforming raw document text into structured profile output
+
+### `packages/profile-schema`
+
+The shared package is the contract between parts of the system. If the shape of a profile changes, this package should usually be reviewed first.
+
+### `supabase`
+
+Supabase stores:
+
+- uploaded documents
+- extraction runs
+- normalized profiles and sections
+- chat threads and messages
+
+## Core Request Flow
+
+The main user flow is:
+
+```text
+User uploads PDF in web app
+        |
+        v
+Web API creates upload record and storage path
+        |
+        v
+PDF is uploaded to storage
+        |
+        v
+Web API starts extraction run
+        |
+        v
+Parser worker claims the run and extracts profile data
+        |
+        v
+Structured profile is saved in Supabase
+        |
+        v
+Web app renders the profile and enables chat on top of it
+```
+
+## Ownership Guide
+
+Use this to decide where a change belongs.
+
+### Change belongs in `apps/web` when
+
+- the issue is visual or interaction-related
+- the API response shape is wrong
+- uploads, chat, or page routing behave incorrectly
+- environment loading or rate limiting is involved
+
+### Change belongs in `apps/parser` when
+
+- text extraction is poor
+- LinkedIn parsing logic is wrong
+- extraction runs are not being processed correctly
+- model prompt or extraction shaping needs to change
+
+### Change belongs in `packages/profile-schema` when
+
+- the canonical profile structure changes
+- fields are added, renamed, or removed
+- multiple services need to agree on a new shape
+
+### Change belongs in `supabase/migrations` when
+
+- a database table or column changes
+- a new RPC is required
+- storage bucket behavior changes
+
+## External Boundaries
+
+The main external systems are:
+
+- Supabase for database and storage
+- Anthropic for model-backed chat and extraction
+
+For local development, `PROFILECORE_MOCK_LLM=true` removes the need for real model calls, but full document upload and persistence still depend on Supabase.
+
+## Practical Advice
+
+- Start at the outermost symptom, then trace inward.
+- Avoid changing the parser, schema, and API response format all at once unless the feature truly requires it.
+- If you update a shared profile field, check the parser output, API shape, and UI rendering together.
+- If a change crosses multiple layers, keep the contract changes explicit and document them in the pull request.

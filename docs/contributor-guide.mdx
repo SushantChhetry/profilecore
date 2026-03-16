@@ -1,0 +1,208 @@
+# Contributor Guide
+
+This guide is the fastest path from cloning the repo to opening a useful pull request.
+
+If you only read one contributor doc, read this one first.
+
+## Start Here
+
+1. Read [docs/setup.mdx](setup.mdx) and get the app running.
+2. Read [docs/architecture.mdx](architecture.mdx) to understand where changes belong.
+3. Use [docs/troubleshooting.mdx](troubleshooting.mdx) if local setup or validation is failing.
+4. Read [CONTRIBUTING.md](../CONTRIBUTING.md) before opening a pull request.
+
+## Good First Contribution Areas
+
+The easiest ways to contribute without needing deep system context are:
+
+- documentation improvements
+- bug fixes with a small reproduction
+- UI polish in the web app
+- parser extraction quality improvements with tests
+- test coverage for existing behavior
+
+Large architectural changes are possible, but open an issue or discussion first.
+
+## Fast Local Setup
+
+### Prerequisites
+
+- `Node.js` 23+
+- `pnpm` 10+
+- `Python` 3.12+
+- `uv`
+- A hosted Supabase project for full end-to-end flows
+
+### Install dependencies
+
+```bash
+pnpm install
+uv sync --project apps/parser --extra dev
+```
+
+### Configure environment
+
+Copy `.env.example` to `.env`.
+
+For the easiest local setup, keep:
+
+```bash
+PROFILECORE_MOCK_LLM=true
+```
+
+That lets you work on most flows without making real model calls.
+
+### Start the services
+
+Run the web app:
+
+```bash
+pnpm --filter @profilecore/web dev
+```
+
+Run the parser service:
+
+```bash
+uv run --project apps/parser uvicorn profilecore_parser.main:app --reload
+```
+
+## What To Change, And Where
+
+Use this map before editing files.
+
+### UI, pages, and interaction flows
+
+Start in:
+
+- `apps/web/app`
+- `apps/web/app/components`
+
+Use this area for:
+
+- page layout
+- upload and profile UX
+- run status and chat interface changes
+
+### API routes and server-side web logic
+
+Start in:
+
+- `apps/web/app/api/v1`
+- `apps/web/lib`
+
+Use this area for:
+
+- upload flow changes
+- profile retrieval
+- chat request handling
+- storage, rate limiting, and environment handling
+
+### Parser and extraction behavior
+
+Start in:
+
+- `apps/parser/src/profilecore_parser`
+
+Use this area for:
+
+- PDF text extraction
+- LinkedIn parsing heuristics
+- extraction worker logic
+- model integration behavior
+
+### Shared profile shape
+
+Start in:
+
+- `packages/profile-schema`
+
+Use this area for:
+
+- schema changes shared across services
+- profile structure updates
+
+### Database and storage behavior
+
+Start in:
+
+- `supabase/migrations`
+
+Use this area for:
+
+- table changes
+- RPC changes
+- storage bucket setup changes
+
+### Documentation
+
+Start in:
+
+- `README.md`
+- `CONTRIBUTING.md`
+- `docs/`
+
+## Recommended Development Workflow
+
+1. Reproduce the bug or identify the improvement.
+2. Find the narrowest layer that owns the behavior.
+3. Make the smallest coherent change that fixes the issue.
+4. Add or update tests when behavior changes.
+5. Run the relevant checks before opening a pull request.
+
+## Validation Checklist
+
+Run the smallest checks that prove your change works, then run broader checks when needed.
+
+### Full repo checks
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+```
+
+### Frontend-only work
+
+```bash
+pnpm --filter @profilecore/web typecheck
+pnpm --filter @profilecore/web test
+```
+
+### Parser-only work
+
+```bash
+uv run --project apps/parser pytest
+uv run --project apps/parser ruff check apps/parser/src apps/parser/tests
+```
+
+## Pull Request Tips
+
+- keep the pull request focused on one problem
+- explain the user-visible change clearly
+- include screenshots for UI changes
+- include request or response examples for API changes
+- mention any follow-up work you intentionally deferred
+
+## Common Contribution Paths
+
+### I want to improve the landing page or profile UI
+
+Start with the route or component in `apps/web/app`, then run the frontend checks.
+
+### I want to improve extraction quality
+
+Start with `apps/parser/src/profilecore_parser`, add or update parser tests, and document any new assumptions.
+
+### I want to add a new API capability
+
+Check the existing routes in `apps/web/app/api/v1`, then trace the data access helpers in `apps/web/lib`.
+
+### I want to change the profile data model
+
+Update the shared schema first, then align the parser, API responses, and any affected database structures.
+
+## When You Are Stuck
+
+- read [docs/architecture.mdx](architecture.mdx) to find the owning layer
+- read [docs/troubleshooting.mdx](troubleshooting.mdx) for local environment issues
+- open an issue or discussion if the change requires project-level direction

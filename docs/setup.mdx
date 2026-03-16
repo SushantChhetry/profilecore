@@ -1,5 +1,7 @@
 # Setup
 
+If you are trying to contribute, start with [docs/contributor-guide.mdx](contributor-guide.mdx). Use this page as the environment setup reference.
+
 ## Prerequisites
 
 - `Node.js` 23+
@@ -10,16 +12,17 @@
 
 ## Environment
 
-Copy [`.env.example`](/Users/sushantchhetry/Documents/GitHub/profilecore/.env.example) to `.env` and fill in:
+Copy [`.env.example`](../.env.example) to `.env` and fill in:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `OPENAI_API_KEY` for real model calls
-- `PROFILECORE_MOCK_OPENAI=true` if you want deterministic local replies
+- `ANTHROPIC_API_KEY` for real model calls
+- `ANTHROPIC_CHAT_MODEL` if you need to pin chat to a specific Claude model
+- `PROFILECORE_MOCK_LLM=true` if you want deterministic local replies
 
 ## Database and storage
 
-Apply the migration in [supabase/migrations/20260316110000_init_profilecore.sql](/Users/sushantchhetry/Documents/GitHub/profilecore/supabase/migrations/20260316110000_init_profilecore.sql). It creates:
+Apply the migration in [supabase/migrations/20260316110000_init_profilecore.sql](../supabase/migrations/20260316110000_init_profilecore.sql). It creates:
 
 - the document, extraction, profile, section, thread, and message tables
 - the private `profilecore-documents` storage bucket
@@ -48,10 +51,9 @@ uv run --project apps/parser uvicorn profilecore_parser.main:app --reload
 
 ## Docker Compose
 
-If you prefer containers, the root [docker-compose.yml](/Users/sushantchhetry/Documents/GitHub/profilecore/docker-compose.yml) starts:
+If you prefer containers, the root [docker-compose.yml](../docker-compose.yml) starts:
 
 - `web` on port `3000`
 - `parser` on port `8000`
 
 Both services expect the same `.env` file at the repo root.
-

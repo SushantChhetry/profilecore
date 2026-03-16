@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from jsonschema import ValidationError, validate
 
 from profilecore_parser.linkedin import is_probable_linkedin_profile
-from profilecore_parser.openai_client import extract_profile
+from profilecore_parser.anthropic_client import extract_profile
 from profilecore_parser.repository import SupabaseRepository
 from profilecore_parser.schema import load_profile_schema
 from profilecore_parser.settings import Settings

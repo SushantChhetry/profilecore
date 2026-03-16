@@ -1,9 +1,9 @@
-import { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { createUploadedDocument } from "@/lib/data";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { assertApiAccess, resolveOwnerKey } from "@/lib/request-context";
+import { assertApiAccess, resolveOwnerKey, withOwnerCookie } from "@/lib/request-context";
 import { buildStoragePath, ensurePdfFile } from "@/lib/storage";
 
 export async function POST(request: NextRequest) {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       storagePath: uploadTarget.storagePath,
     });
 
-    return Response.json({
+    const response = NextResponse.json({
       documentId: uploadTarget.documentId,
       storagePath: uploadTarget.storagePath,
       upload: {
@@ -47,8 +47,9 @@ export async function POST(request: NextRequest) {
         url: `/api/v1/documents/${uploadTarget.documentId}/upload`,
       },
     });
+
+    return withOwnerCookie(request, response, ownerKey);
   } catch (error) {
     return toErrorResponse(error);
   }
 }
-

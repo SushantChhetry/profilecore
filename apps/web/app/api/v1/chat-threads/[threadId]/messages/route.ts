@@ -1,19 +1,20 @@
-import { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { listMessages, sendMessageToThread } from "@/lib/data";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { assertRateLimit } from "@/lib/rate-limit";
-import { assertApiAccess, resolveOwnerKey } from "@/lib/request-context";
+import { assertApiAccess, resolveOwnerKey, withOwnerCookie } from "@/lib/request-context";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ threadId: string }> }) {
   try {
     assertApiAccess(request);
-    resolveOwnerKey(request);
+    const ownerKey = resolveOwnerKey(request);
 
     const { threadId } = await params;
-    const messages = await listMessages(threadId);
+    const messages = await listMessages(threadId, ownerKey);
 
-    return Response.json({ messages });
+    const response = NextResponse.json({ messages });
+    return withOwnerCookie(request, response, ownerKey);
   } catch (error) {
     return toErrorResponse(error);
   }
@@ -34,11 +35,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const { threadId } = await params;
-    const result = await sendMessageToThread(threadId, body.content.trim());
+    const result = await sendMessageToThread(threadId, body.content.trim(), ownerKey);
 
-    return Response.json(result);
+    const response = NextResponse.json(result);
+    return withOwnerCookie(request, response, ownerKey);
   } catch (error) {
     return toErrorResponse(error);
   }
 }
-

@@ -1,0 +1,300 @@
+---
+title: Profile UI Improvement Plan
+description: Prioritized roadmap for improving the structured profile workspace.
+---
+
+# Profile UI Improvement Plan
+
+## Scope
+
+This plan targets the structured profile workspace centered on `apps/web/app/profiles/[profileId]/page.tsx` and the components it depends on, especially `profile-tabs.tsx`, `chat-panel.tsx`, the shared UI primitives, and the profile-related view model in `apps/web/lib/data.ts`.
+
+## Current State Summary
+
+1. The page has a clear visual shell, but the information hierarchy is still weak. The most useful structured data is buried behind tabs instead of being surfaced above the fold.
+2. The `Overview` tab still behaves like a developer/debug surface in places. Links are rendered as JSON, warnings are always visible even when empty, and key profile facts such as `currentCompany` are not elevated.
+3. The `Experience`, `Education`, and `Skills` tabs are readable but shallow. They present raw records rather than helping users understand the person quickly.
+4. The `Chat` tab works, but it feels detached from the rest of the workspace and does not guide the user toward the most useful prompts for the current profile.
+5. The app already has more structure than the UI is using well. The schema includes `currentCompany`, extracted metadata, links, and a `profile_section` table, but the page mostly renders `canonical_json` directly.
+
+## Priority Order
+
+| Priority | Goal | Outcome |
+| --- | --- | --- |
+| P0 | Make the profile legible in one screen | Users understand who the person is and what to do next without hunting through tabs |
+| P1 | Make core sections more useful and trustworthy | Experience, education, skills, and extraction quality become easier to scan and trust |
+| P2 | Improve responsiveness and implementation structure | The workspace behaves well across devices and becomes easier to extend |
+| P3 | Add polish, instrumentation, and advanced insights | Lower-signal developer surfaces move out of the way and future iteration gets easier |
+
+## P0 Tasks
+
+### Task 1: Rebuild the header into a real profile summary
+
+**Why this is first:** The first screen should explain the person immediately. Right now it shows name, headline, and location, but not enough of the structured profile to anchor the rest of the page.
+
+**Work:**
+
+- Replace the current hero with a denser summary header that includes name, headline, current company, location, and a small set of high-value facts.
+- Add a compact action row for `Chat`, `Download JSON`, and a profile navigation shortcut.
+- Surface one or two derived stats such as current role, most recent company, number of experience entries, or latest education item.
+- Keep the top section visually strong, but reduce decorative space that delays useful content.
+
+**Implementation notes:**
+
+- Build a profile header view model in `apps/web/lib/data.ts` or a dedicated formatter module instead of deriving labels inline inside the page component.
+- Use existing schema fields first: `person.currentCompany`, `person.location`, `experience[0]`, `education[0]`, and `metadata.extractedAt`.
+- Avoid inventing new backend requirements for the first pass.
+
+**Done when:**
+
+- A user can answer “who is this?” and “what can I do here?” without changing tabs.
+- The header no longer depends on generic labels like `Structured profile` to carry meaning.
+
+### Task 2: Replace the current overview with a scan-first dashboard
+
+**Why this is first:** The `Overview` tab is the main landing area after the hero, so it should summarize the profile in a product-friendly way instead of exposing raw structures.
+
+**Work:**
+
+- Turn `Summary`, `Links`, and `Warnings` into a dashboard with cards such as `About`, `Current focus`, `Career snapshot`, `Top skills`, and `Source quality`.
+- Render links as human-readable actions with labels and external targets instead of JSON.
+- Move warnings into a secondary trust/quality card that only expands when warnings exist.
+- Promote a short “career at a glance” block that synthesizes the latest role, prior companies, and education in one place.
+
+**Implementation notes:**
+
+- The overview should consume normalized UI data, not raw `JSON.stringify(...)`.
+- Reuse `Card` primitives, but define profile-specific card variants so the overview can feel more intentional than a list of generic boxes.
+- Pull from `profile.sections` where it is useful, so future parser output can change section payloads without forcing a page rewrite.
+
+**Done when:**
+
+- No raw JSON appears in the primary overview experience.
+- The overview gives a high-confidence summary of the person in under 30 seconds of scanning.
+
+### Task 3: Turn the experience tab into a timeline instead of a plain list
+
+**Why this is first:** Experience is likely the highest-value section for most profiles, but it currently reads like a minimally styled database dump.
+
+**Work:**
+
+- Convert experience items into a vertical timeline or grouped chronology with stronger date and company treatment.
+- Format date ranges consistently and compute a readable duration when possible.
+- Highlight the current role and visually separate company, title, location, and description.
+- Support empty and sparse states cleanly when descriptions or dates are missing.
+
+**Implementation notes:**
+
+- Move date formatting into a small shared helper so the experience and education sections stay consistent.
+- Keep the timeline responsive: single-column on mobile, denser chronology on desktop.
+- Preserve schema truth. If the parser does not know a date or location, the UI should omit it rather than infer it.
+
+**Done when:**
+
+- A user can reconstruct the person’s career path quickly without reading every paragraph.
+- Current role and most recent transitions are obvious at a glance.
+
+### Task 4: Make chat feel integrated with the profile, not bolted on
+
+**Why this is first:** Chat is a core differentiator for the product, but right now it lives as an isolated tab with generic quick actions.
+
+**Work:**
+
+- Add profile-aware prompt suggestions derived from the current profile, such as warm intro prompts, company-specific questions, or role-based summary requests.
+- Consider a desktop layout where chat is available as a persistent rail or launch surface rather than only as a tab destination.
+- Add clearer first-run guidance and better pending state feedback for the first response.
+- Preserve conversation history more clearly within the visual system of the profile workspace.
+
+**Implementation notes:**
+
+- Keep the existing API contract for the initial UI pass. This work should be mostly presentation and prompt selection logic.
+- Generate prompt suggestions from available profile fields so the actions change from profile to profile.
+- If a rail layout is too large for the first pass, add a sticky “Ask about this profile” entry point in the header and overview.
+
+**Done when:**
+
+- Users can start a high-value conversation in one click from the main workspace.
+- The chat tab is no longer the only obvious place where AI interaction begins.
+
+## P1 Tasks
+
+### Task 5: Add a trust and provenance layer
+
+**Why this matters:** Structured profile UIs need to help users understand what was extracted, when it was extracted, and whether anything looks incomplete.
+
+**Work:**
+
+- Create a compact trust card showing source filename, extraction date, document type, and warning count.
+- Show warnings only when present and make them readable, not just dumped as list items.
+- Add missing-data messaging for empty sections such as no links, no education, or no summary.
+- Reserve space for future confidence or citation features without requiring them now.
+
+**Implementation notes:**
+
+- The current schema already exposes `metadata.sourceFilename`, `metadata.extractedAt`, `documentType`, and `extractionWarnings`.
+- Keep trust content secondary to the actual profile, but always available from the overview and header area.
+
+**Done when:**
+
+- Users can tell where the data came from and whether the extraction needs a second look.
+- Empty sections feel intentional rather than broken.
+
+### Task 6: Rework tabs and page navigation for real-world usage
+
+**Why this matters:** The tab system works technically, but it does not yet feel like a durable workspace navigation model.
+
+**Work:**
+
+- Make the tabs sticky or otherwise persistent so section switching remains available while scrolling.
+- Improve mobile behavior for overflowed tabs, long labels, and deep content stacks.
+- Add an internal section jump model for long tabs like `Experience` and `Chat`.
+- Keep URL state in sync so deep links still work.
+
+**Implementation notes:**
+
+- Preserve the current query-string approach unless it becomes a clear blocker.
+- Validate keyboard and screen-reader behavior after any navigation changes.
+
+**Done when:**
+
+- Navigation still feels stable after the page gets more content.
+- Mobile users can switch sections without fighting the layout.
+
+### Task 7: Upgrade education and skills from raw lists to interpretable sections
+
+**Why this matters:** These sections currently expose the data but do not help users understand what is important about it.
+
+**Work:**
+
+- Present education in a cleaner academic timeline or grouped cards with degree, field of study, and dates treated consistently.
+- Turn skills into grouped or ranked chips, such as domain skills, product skills, leadership skills, or industry keywords when the data supports it.
+- Highlight the most relevant skills in the overview and keep the full list in a dedicated section.
+- Use endorsement counts if they become available, but do not block on them.
+
+**Implementation notes:**
+
+- The first pass can group skills heuristically only if the logic is simple and transparent. Otherwise keep them flat but improve ranking and layout.
+- Maintain a graceful fallback for profiles with only a few skills or no education data.
+
+**Done when:**
+
+- Education and skills contribute to understanding the person rather than just filling tabs.
+
+### Task 8: Add explicit loading, empty, and error states across the profile workspace
+
+**Why this matters:** The profile page currently assumes the happy path. That makes sparse or partially extracted profiles feel weaker than they are.
+
+**Work:**
+
+- Add section-specific empty states for overview, links, experience, education, skills, and chat.
+- Introduce profile-level skeleton states if the page eventually becomes more client-driven.
+- Improve messaging for chat failures and slow responses.
+- Ensure long content, overflow, and malformed values do not break the layout.
+
+**Implementation notes:**
+
+- Start with the states already observable in the schema and current client components.
+- Keep copy concise and factual. This should increase trust, not add filler.
+
+**Done when:**
+
+- Sparse profiles still look intentional.
+- Failure cases keep the user oriented instead of collapsing into generic error text.
+
+## P2 Tasks
+
+### Task 9: Refactor the profile page into reusable, data-driven UI sections
+
+**Why this matters:** `apps/web/app/profiles/[profileId]/page.tsx` currently contains most of the page structure inline. That will become hard to evolve once the workspace grows.
+
+**Work:**
+
+- Split the page into dedicated components such as `ProfileHeader`, `OverviewGrid`, `ExperienceTimeline`, `EducationSection`, `SkillsSection`, and `ProfileTrustCard`.
+- Introduce a normalized view model layer that maps `canonical_json` and `profile.sections` into display-ready props.
+- Keep raw schema objects out of the presentation layer as much as possible.
+
+**Implementation notes:**
+
+- This refactor should follow the first round of UI changes, not precede them.
+- Keep the component API narrow so later parser changes affect fewer files.
+
+**Done when:**
+
+- The page component mostly orchestrates layout and tab composition.
+- New section variants can be added without editing one monolithic file.
+
+### Task 10: Create a profile-specific visual system pass
+
+**Why this matters:** The current styling direction is promising, but the profile workspace needs stronger hierarchy and more purposeful variation between content types.
+
+**Work:**
+
+- Define a tighter scale for typography, spacing, panel density, and section contrast within the profile workspace.
+- Introduce a few profile-specific UI patterns such as stat pills, timeline nodes, quiet metadata rows, and trust badges.
+- Revisit desktop and mobile spacing so the page feels deliberate instead of uniformly padded.
+- Audit focus states, contrast, and readable line lengths across all profile sections.
+
+**Implementation notes:**
+
+- Keep this aligned with the existing warm visual language in `globals.css`.
+- Avoid introducing a second unrelated design system. This should sharpen the current one.
+
+**Done when:**
+
+- The profile page feels like a cohesive product surface rather than a collection of similarly styled cards.
+- Accessibility regressions are explicitly checked as part of the pass.
+
+## P3 Tasks
+
+### Task 11: Move raw JSON into a secondary developer surface
+
+**Why this matters:** Raw JSON is useful, but it competes with the product experience when placed as a first-class tab.
+
+**Work:**
+
+- Replace the `Raw JSON` tab with a lower-visibility `Inspect data` affordance, developer drawer, or secondary tab group.
+- Preserve export functionality for power users.
+- Keep the JSON readable and copyable without making it a primary navigation destination.
+
+**Implementation notes:**
+
+- This change should happen after the overview is strong enough that most users do not need the JSON as a fallback.
+
+**Done when:**
+
+- The workspace still supports inspection, but the default product flow is human-readable first.
+
+### Task 12: Add lightweight instrumentation and future insight hooks
+
+**Why this matters:** Once the core UI improves, the next bottleneck will be learning which surfaces users actually use.
+
+**Work:**
+
+- Track high-value interactions such as tab changes, first chat prompt used, export clicks, and profile open-to-chat conversion.
+- Leave extension points for future insights such as conversation starters, career highlights, or relationship overlap modules.
+- Use the collected signals to decide whether chat should become a persistent rail, whether overview cards are useful, and which sections deserve more depth.
+
+**Implementation notes:**
+
+- Instrumentation is lower priority than core readability because it is only useful after the main workflow is worth measuring.
+- Keep analytics minimal and privacy-conscious.
+
+**Done when:**
+
+- The team can validate whether the new profile workspace is being used as intended.
+
+## Recommended Execution Sequence
+
+1. Ship Tasks 1 and 2 together so the header and overview become the new primary entry point.
+2. Follow with Tasks 3 and 4 so the two highest-value deeper workflows, career review and chat, match the stronger landing experience.
+3. Complete Tasks 5 through 8 to improve trust, navigation, and resilience.
+4. Refactor with Tasks 9 and 10 once the desired UI structure is proven.
+5. Finish with Tasks 11 and 12 after the core surface is stable.
+
+## Success Criteria
+
+- The first screen explains the person and next actions clearly.
+- Users can scan the profile faster than reading raw LinkedIn-exported content.
+- Chat feels like a natural extension of the structured profile, not a separate experiment.
+- The workspace remains readable on mobile and stable as richer sections are added.
+- Developer-oriented data inspection stays available without dominating the primary experience.
